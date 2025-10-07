@@ -59,7 +59,11 @@ int main() {
         int recv_size = recv(sock, server_reply, sizeof(server_reply), 0);
         if (recv_size > 0) {
             server_reply[recv_size] = '\0';
-            printf("Servidor: %s\n", server_reply);
+            
+            printf("\r%s\n", server_reply); 
+            printf("Você: "); 
+            
+            fflush(stdout); 
         }
     }
 
