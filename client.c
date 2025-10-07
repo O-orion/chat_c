@@ -3,20 +3,43 @@
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <process.h>
 
 #pragma comment(lib, "ws2_32.lib")
+
+unsigned __stdcall recv_handler(void* pSocket) {
+    SOCKET sock = (SOCKET)pSocket;
+    char server_reply[1024];
+    int recv_size;
+
+    while (1) {
+        memset(server_reply, 0, sizeof(server_reply));
+        recv_size = recv(sock, server_reply, sizeof(server_reply) - 1, 0);
+
+        if (recv_size <= 0) {
+            printf("\rServidor desconectado. Pressione Enter para sair.\n");
+            break;
+        }
+
+        server_reply[recv_size] = '\0';
+
+        printf("\r%s\n", server_reply);
+        printf("Você: ");
+        fflush(stdout);
+    }
+    return 0;
+}
 
 int main() {
     WSADATA wsa;
     SOCKET sock;
     struct sockaddr_in serv_addr;
-    char message[1024], server_reply[1024];
+    char message[1024];
 
-    // Inf user
     char userName[50];
     char buffermsg[1200];
 
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         printf("Erro ao iniciar Winsock\n");
         return 1;
     }
@@ -44,27 +67,22 @@ int main() {
     fgets(userName, sizeof(userName), stdin);
     userName[strcspn(userName, "\n")] = '\0';
 
+    _beginthreadex(NULL, 0, recv_handler, (void*)sock, 0, NULL);
+
     while (1) {
         printf("Você: ");
         fgets(message, sizeof(message), stdin);
         message[strcspn(message, "\n")] = '\0';
 
-        if (strcmp(message, "sair") == 0)
+        if (strcmp(message, "sair") == 0) {
+            snprintf(buffermsg, sizeof(buffermsg), "%s: sair", userName);
+            send(sock, buffermsg, strlen(buffermsg), 0);
             break;
+        }
 
         snprintf(buffermsg, sizeof(buffermsg), "%s: %s", userName, message);
         send(sock, buffermsg, strlen(buffermsg), 0);
-
-
-        int recv_size = recv(sock, server_reply, sizeof(server_reply), 0);
-        if (recv_size > 0) {
-            server_reply[recv_size] = '\0';
-            
-            printf("\r%s\n", server_reply); 
-            printf("Você: "); 
-            
-            fflush(stdout); 
-        }
+        
     }
 
     closesocket(sock);
